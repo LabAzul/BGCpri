@@ -170,4 +170,4 @@ BGCpri is licensed under the [GPLLicense](https://www.gnu.org/licenses/gpl-3.0.h
 <br>
 
 ## Credits
-BGCpri was developed by João Pedro Brandão Domingues, Lígia Akemi Mizuyama and Doctor Laura Pavan Ióca.
+BGCpri was developed by João Pedro Brandão Domingues, Lígia Akemi Mizuyama, Alessandra S. Eustáquio and Doctor Laura Pavan Ióca.
