@@ -1,0 +1,276 @@
+#!/bin/bash
+# BGCpri is licensed under the GNU General Public License v3.0
+# Developed by João Pedro Brandão Domingues, Lígia Akemi Mizuyama and Doctor Laura Pavan Ióca.
+
+# Function to display the version
+print_version() {
+    echo "BGCpri version 1.1"
+}
+
+# Function to display help
+print_help() {
+    echo "Usage: BGCpri [OPTIONS]"
+    echo "Options:"
+    echo "  --version      Show version information"
+    echo "  -i, --input    Specify the input directory"
+    echo "  -o, --output   Specify the output directory"
+    echo "  -h, --help     Show this help message"
+}
+
+# Function to process the input directory
+process_input_directory() {
+    input_dir="$1"
+    if [ ! -d "$input_dir" ]; then
+        echo "Error: Input directory does not exist."
+        exit 1
+    fi
+    echo "Input directory: $input_dir"
+}
+
+# Function to process the output directory
+process_output_directory() {
+    output_dir="$1"
+    if [ ! -d "$output_dir" ]; then
+        echo "Error: Output directory does not exist."
+        exit 1
+    fi
+    echo "Output directory: $output_dir"
+}
+
+# Check arguments passed to the script
+while [ $# -gt 0 ]; do
+    case "$1" in
+        "--version")
+            print_version
+            exit 0
+            ;;
+        "-i"|"--input")
+            if [ -z "$2" ]; then
+                echo "Error: Missing input directory. Usage: BGCpri -i /path/to/input/files"
+                exit 1
+            fi
+            process_input_directory "$2"
+            shift 2
+            ;;
+        "-o"|"--output")
+            if [ -z "$2" ]; then
+                echo "Error: Missing output directory. Usage: BGCpri -o /path/to/output/files"
+                exit 1
+            fi
+            process_output_directory "$2"
+            shift 2
+            ;;
+        "-h"|"--help")
+            print_help
+            exit 0
+            ;;
+        *)
+            echo "Error: Invalid option. Use --help for usage information."
+            exit 1
+            ;;
+    esac
+done
+
+# Check whether input and output directories have been defined
+if [ -z "$input_dir" ]; then
+    echo "Error: Input directory not specified. Use -i or --input to specify the input directory."
+    exit 1
+fi
+
+if [ -z "$output_dir" ]; then
+    echo "Error: Output directory not specified. Use -o or --output to specify the output directory."
+    exit 1
+fi
+
+# Main banner
+cat << "EOF"
+LLLL                      BBBB
+LLLL                      BBBB
+LLLL                      BBBB
+LLLL     AAAAAAAAAAAAAA   BBBBBBBBBBBBB
+LLLL    AAAAAAAAAAAAAAA   BBBBBBBBBBBBBB
+LLLL   AAAAA      AAAAA   BBBBB      BBBB
+LLLL   AAAA       AAAAA   BBBB       BBBB
+LLLL   AAAA       AAAAA   BBBB       BBBB
+LLLL   AAAAAA    AAAAAA   BBBBBB    BBBBB
+LLLL    AAAAAAAAAAAAAAA   BBBBBBBBBBBBBB                  LLLL
+LLLL      AAAAAAAA AAAA   BBB  BBBBBBB                    LLLL
+                                                          LLLL
+          AAAAAAAA AAAA   ZZZZZZZZZZZZ   UUUU      UUUUU  LLLL
+        AAAAAAAAAAAAAAA   ZZZZZZZZZZZZ   UUUU      UUUUU  LLLL
+       AAAAA     AAAAAA         ZZZZ     UUUU      UUUUU  LLLL
+       AAAA       AAAAA       ZZZZZ      UUUU      UUUUU  LLLL
+       AAAA       AAAAA      ZZZZZ       UUUU      UUUUU  LLLL
+       AAAAA      AAAAA     ZZZZ         UUUUU    UUUUUU  LLLL
+AAAA    AAAAAAAAAAAAAAA   ZZZZZZZZZZZZ    UUUUUUUUUUUUUU  LLLL
+AAAA      AAAAAAAAAAAAA   ZZZZZZZZZZZZ     UUUUUUVUUUUUU  LLLL
+EOF
+echo "BGC PRIORITIZATION ALGORITHM
+
+The BGC PRIORITIZATION ALGORITHM uses all .zip or .gbk files from antiSMASH results inside the same directory.
+If your files are scattered across multiple directories or if you want to run only specific files, please make sure to make a copy of them in a specific directory before you run this program, in order to get the correct results."
+
+# Function to print a message and wait for the user to press Enter
+press_enter() {
+    while true; do
+        read -p "Press Enter to continue..." userInput
+        [ -z "$userInput" ] && break
+        echo "Invalid input. Press Enter to continue..."
+    done
+}
+
+# Function to check and install unzip if needed
+install_unzip() {
+    command -v unzip &> /dev/null || {
+        echo "Error: Unzip is not installed. Aborting."
+        exit 1
+    }
+    echo "Unzip is already installed. Proceeding..."
+}
+
+# Canonical, Other, Exceptional, and Tailoring Enzymes list
+canonical_list=("Phosphopantetheine attachment site" "AA-adenyl-dom: amino acid adenylation domain" "Condensation domain" "Acyl transferase domain" "Ketoacyl-synthetase C-terminal extension")
+other_list=("KR domain" "Thioesterase domain" "Thioester-redct: thioester reductase domain" "Polyketide synthase dehydratase" "Alcohol dehydrogenase GroES-like domain")
+exceptional_list=("Choline/Carnitine o-acyltransferase" "Methyltransferase FkbM domain" "Methyltransferase domain" "Enoyl-CoA hydratase/isomerase" "Luciferase-like monooxygenase" "Taurine catabolism dioxygenase TauD, TfdA family" "YcaO cyclodehydratase, ATP-ad Mg2+-binding" "Phytanoyl-CoA dioxygenase")
+tailoring_list=("Cytochrome P450" "FAD dependent oxidoreductase" "NAD dependent epimerase/dehydratase family" "Tryptophan halogenase" "Aminotransferase class-III" "Aminotransferase class-V" "Radical SAM superfamily" "Alpha/beta hydrolase family" "Acetyltransferase (GNAT) domain" "Acetyltransferase (GNAT) family" "Polyketide cyclase" "Glycosyltransferase" "short chain dehydrogenase" "Flavin-binding monooxygenase-like" "Flavin containing amine oxidoreductase" "Alcohol acetyltransferase" "2OG-Fe(II) oxygenase superfamily")
+
+
+unzip_to_directory() {
+    local input_dir="$1"
+    local temp_dir="$2"
+    mkdir -p "$temp_dir"
+
+# Find .zip files and unzip the .gbk files
+    for file in "$input_dir"/*.zip; do
+        if [[ -f "$file" ]]; then
+            unzip -jo "$file" "*.gbk" -d "$temp_dir"
+        fi
+    done
+
+# Find individual .gbk files and copy them 
+    for file in "$input_dir"/*.gbk; do
+        if [[ -f "$file" ]]; then
+            cp  "$file" "$temp_dir" 
+        fi
+    done
+    
+    echo ".gbk files are in: $temp_dir"
+}
+
+process_gbk_files() {
+    local temp_dir="$1"
+    local output_file="$2"
+
+    echo -e "Organism\tCluster\tBGC_Class\tBGC_Type\tBiosynthetic\tBiosynthetic-additional\tRegulatory\tTransport\tOther\tComplete\tIncomplete\tCanonical\tOther domain\tExceptional\tTailoring\tScore" > "$output_file"
+
+	
+    for gbk_file in "$temp_dir"/*region*.gbk; do
+        
+        organism_name=$(grep -m1 "ORGANISM" "$gbk_file"  | awk '{$1=""; print $0}')
+        cluster_name=$(basename "$gbk_file" .gbk)
+        
+        
+        bgc_type=$(grep -A 5 "/neighbourhood=" "$gbk_file" | grep "product" | awk -F '"' '{print $2}' | sort -u | tr '\n' ',' | sed 's/,$//')
+
+        # NRPS, PKS, NRPKS-PKS classification
+        bgc_class=""
+        if [[ $bgc_type == *"NRPS"* ]] && [[ $bgc_type == *"KS"* ]]; then
+            bgc_class="NRPS-PKS"
+        elif [[ $bgc_type == *"NRPS"* ]]; then
+            bgc_class="NRPS"
+        elif [[ $bgc_type == *"KS"* ]]; then
+            bgc_class="PKS"
+        fi
+        
+        if [[ -z "$bgc_class" ]]; then
+            continue
+        fi
+
+        
+        # Variables to count each aspect of the BGC
+        complete_count=$(grep -o "/complete" "$gbk_file" | wc -l)
+        incomplete_count=$(grep -o "/incomplete" "$gbk_file" | wc -l)
+        biosynthetic=0
+        biosynthetic_additional=0
+        regulatory=0
+        transport=0
+        other=0
+        canonical=0
+        other_domain=0
+        exceptional=0
+        tailoring=0
+
+        genekind=$(grep -o 'gene_kind="[^"]*"' "$gbk_file")
+        descriptions=$(grep 'description=' "$gbk_file" | sed 's/\/description="//;s/"//;s/^[ \t]*//;s/[ \t]*$//')
+
+	# Counts for biosynthetic-add, biosynthetic, regulatory, transport and other
+        for line in $genekind; do
+            case "$line" in
+        	*biosynthetic-additional*) ((biosynthetic_additional++)) ;;
+        *biosynthetic*) ((biosynthetic++)) ;;
+        *regulatory*) ((regulatory++)) ;;
+        	*transport*) ((transport++)) ;;
+        	*other*) ((other++)) ;;
+    		esac
+        done
+	
+	# Counts for canonical, other, exceptional domains and tailoring enzymes        
+	while read -r desc; do
+        if [[ " ${canonical_list[*]} " == *" $desc "* ]]; then
+            ((canonical++))
+        elif [[ " ${other_list[*]} " == *" $desc "* ]]; then
+            ((other_domain++))
+        elif [[ " ${exceptional_list[*]} " == *" $desc "* ]]; then
+            ((exceptional++))
+        elif [[ " ${tailoring_list[*]} " == *" $desc "* ]]; then
+            ((tailoring++))
+        fi
+    	done <<< "$descriptions"
+
+
+        # Final score calculation
+        score=$(echo "$biosynthetic * 0.5 + $biosynthetic_additional * 0.5 + $regulatory * 1 + $transport * 1 + $other * 0.25 + $canonical * 1 + $other_domain * 2 + $exceptional * 3 + $tailoring * 3 + $complete_count * 3 + $incomplete_count * 0.5" | bc)
+
+        echo -e "$organism_name\t$cluster_name\t$bgc_class\t$bgc_type\t$biosynthetic\t$biosynthetic_additional\t$regulatory\t$transport\t$other\t$complete_count\t$incomplete_count\t$canonical\t$other_domain\t$exceptional\t$tailoring\t$score" >> "$output_file"
+        
+    done
+
+    echo "Results are saved in: $output_file"
+}
+
+# Ask user to press "enter" to continue
+press_enter
+
+# Check and install unzip
+install_unzip
+
+results_dir="$output_dir/BGC_PRIORIZATION_RESULTS"
+temp_dir="$results_dir/dir_temp"
+output_file="$results_dir/BGC_summary.tsv"
+
+mkdir -p "$results_dir"
+mkdir -p "$temp_dir"
+
+unzip_to_directory "$input_dir" "$temp_dir"
+
+cd "$temp_dir" || exit 1
+
+# Check if there are .gbk files in the temp directory
+if ls *.gbk 1> /dev/null 2>&1; then
+    # If .gbk files are found
+    echo "Processing antiSMASH .gbk files..."
+
+    process_gbk_files "$temp_dir" "$output_file"
+
+    # Remove temp dir
+    cd ..
+    rm -r "$temp_dir"
+else
+    # If no .gbk files are found, display an error message and abort
+    cd ..
+    rm -r "$temp_dir" "$results_dir"
+    echo "Error: No .gbk files were found. Aborting."
+    exit 1
+fi
+
+echo "Done. Thank you for using BGCpri"
