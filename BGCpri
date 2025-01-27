@@ -1,6 +1,6 @@
 #!/bin/bash
 # BGCpri is licensed under the GNU General Public License v3.0.
-# Developed by João Pedro Brandão Domingues, Lígia Akemi Mizuyama and Doctor Laura Pavan Ióca.
+# Developed by João Pedro Brandão Domingues, Lígia Akemi Mizuyama, Alessandra S. Eustáquio and Doctor Laura Pavan Ióca.
 
 # Function to display the version
 print_version() {
