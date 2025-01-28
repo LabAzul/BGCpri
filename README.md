@@ -1,7 +1,7 @@
 <a id="readme-top"></a>
 # BGCpri
 
-BGCpri is an application designed to prioritize Biosynthetic Gene Clusters (BGCs) of polyketide synthase (PKS), non-ribosomal peptide synthetase (NRPS), and hybrid NRPS/PKS identified through antiSMASH results. It employs a scoring system tailored to prioritize BGCs with the potential to encode chemically diverse secondary metabolites.
+BGCpri is an application designed to prioritize biosynthetic gene clusters (BGCs) of polyketide synthases (PKS), non-ribosomal peptide synthetases (NRPS), and hybrid NRPS/PKS identified through antiSMASH results. It employs a scoring system tailored to prioritize BGCs with the potential to encode chemically diverse secondary metabolites.
 
 ## Getting Started
 
