@@ -4,7 +4,7 @@
 
 # Function to display the version
 print_version() {
-    echo "BGCpri version 1.1"
+    echo "BGCpri version 2.1"
 }
 
 # Function to display help
@@ -110,15 +110,6 @@ echo "BGC PRIORITIZATION ALGORITHM
 The BGC PRIORITIZATION ALGORITHM uses all .zip or .gbk files from antiSMASH results inside the same directory.
 If your files are scattered across multiple directories or if you want to run only specific files, please make sure to make a copy of them in a specific directory before you run this program, in order to get the correct results."
 
-# Function to print a message and wait for the user to press Enter
-press_enter() {
-    while true; do
-        read -p "Press Enter to continue..." userInput
-        [ -z "$userInput" ] && break
-        echo "Invalid input. Press Enter to continue..."
-    done
-}
-
 # Function to check and install unzip if needed
 install_unzip() {
     command -v unzip &> /dev/null || {
@@ -161,16 +152,22 @@ process_gbk_files() {
     local temp_dir="$1"
     local output_file="$2"
 
-    echo -e "Organism\tCluster\tBGC_Class\tBGC_Type\tBiosynthetic\tBiosynthetic-additional\tRegulatory\tTransport\tOther\tComplete\tIncomplete\tCanonical\tOther domain\tExceptional\tTailoring\tScore" > "$output_file"
+    echo -e "Organism\tCluster\tBGC_Class\tBGC_Type\tBiosynthetic\tBiosynthetic-additional\tRegulatory\tTransport\tOther\tComplete\tIncomplete\tCanonical\tOther domain\tExceptional\tTailoring\tScore\tNormalized_Score" > "$output_file"
 
 	
     for gbk_file in "$temp_dir"/*region*.gbk; do
-        
         organism_name=$(grep -m1 "ORGANISM" "$gbk_file"  | awk '{$1=""; print $0}')
         cluster_name=$(basename "$gbk_file" .gbk)
         
+        cluster_length=$(grep "^LOCUS" "$gbk_file" | awk '{print $3}')
+        kb_length=$(echo "scale=2;$cluster_length/1000" | bc)
         
         bgc_type=$(grep -A 5 "/neighbourhood=" "$gbk_file" | grep "product" | awk -F '"' '{print $2}' | sort -u | tr '\n' ',' | sed 's/,$//')
+        
+        count=$(grep -c "/candidate_cluster_numbers" "$gbk_file")
+        echo "$organism_name - $cluster_name tem $count candidate clusters"
+        
+        total_bgcs=$((total_bgcs + count))
 
         # NRPS, PKS, NRPKS-PKS classification
         bgc_class=""
@@ -186,7 +183,6 @@ process_gbk_files() {
             continue
         fi
 
-        
         # Variables to count each aspect of the BGC
         complete_count=$(grep -o "/complete" "$gbk_file" | wc -l)
         incomplete_count=$(grep -o "/incomplete" "$gbk_file" | wc -l)
@@ -225,21 +221,20 @@ process_gbk_files() {
         elif [[ " ${tailoring_list[*]} " == *" $desc "* ]]; then
             ((tailoring++))
         fi
-    	done <<< "$descriptions"
+    	done <<< "$descriptions"        
 
-
-        # Final score calculation
         score=$(echo "$biosynthetic * 0.5 + $biosynthetic_additional * 0.5 + $regulatory * 1 + $transport * 1 + $other * 0.25 + $canonical * 1 + $other_domain * 2 + $exceptional * 3 + $tailoring * 3 + $complete_count * 3 + $incomplete_count * 0.5" | bc)
+        normalized_score=$(echo "scale=2;$score/$kb_length" | bc)
 
-        echo -e "$organism_name\t$cluster_name\t$bgc_class\t$bgc_type\t$biosynthetic\t$biosynthetic_additional\t$regulatory\t$transport\t$other\t$complete_count\t$incomplete_count\t$canonical\t$other_domain\t$exceptional\t$tailoring\t$score" >> "$output_file"
+        echo -e "$organism_name\t$cluster_name\t$bgc_class\t$bgc_type\t$biosynthetic\t$biosynthetic_additional\t$regulatory\t$transport\t$other\t$complete_count\t$incomplete_count\t$canonical\t$other_domain\t$exceptional\t$tailoring\t$score\t$normalized_score" >> "$output_file"
         
     done
+    
+    echo "--------------------------------"
+    echo "Grand Total of BGCs: $total_bgcs"
 
     echo "Results are saved in: $output_file"
 }
-
-# Ask user to press "enter" to continue
-press_enter
 
 # Check and install unzip
 install_unzip
