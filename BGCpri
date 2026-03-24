@@ -163,11 +163,6 @@ process_gbk_files() {
         kb_length=$(echo "scale=2;$cluster_length/1000" | bc)
         
         bgc_type=$(grep -A 5 "/neighbourhood=" "$gbk_file" | grep "product" | awk -F '"' '{print $2}' | sort -u | tr '\n' ',' | sed 's/,$//')
-        
-        count=$(grep -c "/candidate_cluster_numbers" "$gbk_file")
-        echo "$organism_name - $cluster_name tem $count candidate clusters"
-        
-        total_bgcs=$((total_bgcs + count))
 
         # NRPS, PKS, NRPKS-PKS classification
         bgc_class=""
@@ -229,9 +224,6 @@ process_gbk_files() {
         echo -e "$organism_name\t$cluster_name\t$bgc_class\t$bgc_type\t$biosynthetic\t$biosynthetic_additional\t$regulatory\t$transport\t$other\t$complete_count\t$incomplete_count\t$canonical\t$other_domain\t$exceptional\t$tailoring\t$score\t$normalized_score" >> "$output_file"
         
     done
-    
-    echo "--------------------------------"
-    echo "Grand Total of BGCs: $total_bgcs"
 
     echo "Results are saved in: $output_file"
 }
