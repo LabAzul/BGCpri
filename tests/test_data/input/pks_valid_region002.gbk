@@ -1,0 +1,58 @@
+LOCUS       ctg5_region001.1        6000 bp    DNA     linear   BCT 01-JAN-2024
+DEFINITION  Test organism region 1.
+ACCESSION   ctg5_region001
+VERSION     ctg5_region001.1
+KEYWORDS    .
+SOURCE      Test organism
+  ORGANISM  Test organism
+COMMENT     ##antiSMASH-Data-START##
+            Version      :: 7.1.0
+            Run date     :: 2024-01-01T00:00:00
+            ##antiSMASH-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..6000
+                     /organism="Test organism"
+     protocluster    1..6000
+                     /aStool="rule-based-clusters"
+                     /category="PKS"
+                     /neighbourhood="6000"
+                     /product="T1PKS"
+     gene            1..2000
+                     /gene="geneA"
+     CDS             1..2000
+                     /gene="geneA"
+                     /gene_kind="biosynthetic"
+     aSDomain        100..500
+                     /aSTool="nrps_pks_domains"
+                     /description="Ketoacyl-synthetase C-terminal extension"
+                     /domain_id="nrpspksdomains_ctg5_1_PKS_KS.1"
+     aSDomain        600..900
+                     /aSTool="nrps_pks_domains"
+                     /description="Acyl transferase domain"
+                     /domain_id="nrpspksdomains_ctg5_1_PKS_AT.1"
+     aSModule        100..900
+                     /complete
+                     /domains="nrpspksdomains_ctg5_1_PKS_KS.1, nrpspksdomains_ctg5_1_PKS_AT.1"
+     gene            2500..4000
+                     /gene="geneB"
+     CDS             2500..4000
+                     /gene="geneB"
+                     /gene_kind="biosynthetic-additional"
+     aSDomain        2600..2900
+                     /aSTool="nrps_pks_domains"
+                     /description="KR domain"
+                     /domain_id="nrpspksdomains_ctg5_1_PKS_KR.1"
+     aSDomain        3000..3300
+                     /aSTool="nrps_pks_domains"
+                     /description="Cytochrome P450"
+                     /domain_id="ctg5_1_p450dom.1"
+     aSModule        2600..3300
+                     /incomplete
+     gene            4500..5000
+                     /gene="geneC"
+     CDS             4500..5000
+                     /gene="geneC"
+                     /gene_kind="transport"
+ORIGIN
+        1 atgtctacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac
+//

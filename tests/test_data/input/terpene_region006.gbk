@@ -1,0 +1,27 @@
+LOCUS       ctg4_region001.1        4000 bp    DNA     linear   BCT 01-JAN-2024
+DEFINITION  Test organism region 1, terpene cluster.
+ACCESSION   ctg4_region001
+VERSION     ctg4_region001.1
+KEYWORDS    .
+SOURCE      Test organism
+  ORGANISM  Test organism
+COMMENT     ##antiSMASH-Data-START##
+            Version      :: 7.1.0
+            Run date     :: 2024-01-01T00:00:00
+            ##antiSMASH-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..4000
+                     /organism="Test organism"
+     protocluster    1..4000
+                     /aStool="rule-based-clusters"
+                     /category="terpene"
+                     /neighbourhood="4000"
+                     /product="terpene"
+     gene            1..1500
+                     /gene="geneA"
+     CDS             1..1500
+                     /gene="geneA"
+                     /gene_kind="biosynthetic"
+ORIGIN
+        1 atgtctacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac
+//

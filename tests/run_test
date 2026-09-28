@@ -1,0 +1,126 @@
+#!/bin/bash
+set -u
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BGCPRI="${1:-$SCRIPT_DIR/../BGCpri}"
+BGCPRI="$(cd "$(dirname "$BGCPRI")" 2>/dev/null && pwd)/$(basename "$BGCPRI")"
+FIXTURES="$SCRIPT_DIR/test_data/input"
+EXPECTED="$SCRIPT_DIR/test_data/expected/BGC_summary.tsv"
+WORKDIR=$(mktemp -d)
+FAIL=0
+
+echo "Testing: $BGCPRI"
+echo "Fixtures: $FIXTURES"
+echo "Work dir: $WORKDIR"
+echo
+
+if [[ ! -x "$BGCPRI" ]]; then
+    echo "FAIL: BGCpri not found or not executable at $BGCPRI"
+    exit 1
+fi
+
+mkdir -p "$WORKDIR/out"
+RUN_OUTPUT=$("$BGCPRI" -i "$FIXTURES" -o "$WORKDIR/out" 2>&1)
+RUN_EXIT=$?
+
+RESULT_TSV="$WORKDIR/out/BGC_PRIORIZATION_RESULTS/BGC_summary.tsv"
+
+# Test 1: script should succeed overall (3 valid fixtures exist)
+if [[ $RUN_EXIT -ne 0 ]]; then
+    echo "FAIL: BGCpri exited with code $RUN_EXIT, expected 0"
+    echo "--- script output ---"
+    echo "$RUN_OUTPUT"
+    FAIL=1
+else
+    echo "PASS: BGCpri exited 0"
+fi
+
+# Test 2: exactly 3 valid fixtures processed, 5 invalid/out-of-scope ones skipped
+if echo "$RUN_OUTPUT" | grep -q "Processed 3 region(s), skipped 5"; then
+    echo "PASS: processed/skipped counts are 3/5 as expected"
+else
+    echo "FAIL: expected 'Processed 3 region(s), skipped 5' in output"
+    FAIL=1
+fi
+
+# Test 3: each known-invalid fixture produced its own warning
+for bad in no_locus_region003 not_antismash_region004 no_length_region005 terpene_region006 fused_length_region008; do
+    if echo "$RUN_OUTPUT" | grep -q "$bad"; then
+        echo "PASS: $bad was flagged and skipped"
+    else
+        echo "FAIL: $bad was not reported as skipped (silently dropped?)"
+        FAIL=1
+    fi
+done
+
+# Test 4: output table matches expected output file exactly
+if [[ ! -f "$RESULT_TSV" ]]; then
+    echo "FAIL: no BGC_summary.tsv produced at $RESULT_TSV"
+    FAIL=1
+elif diff -u "$EXPECTED" "$RESULT_TSV" > "$WORKDIR/diff.txt"; then
+    echo "PASS: BGC_summary.tsv matches expected output"
+else
+    echo "FAIL: BGC_summary.tsv differs from expected:"
+    cat "$WORKDIR/diff.txt"
+    FAIL=1
+fi
+
+# Test 5: accounting invariant - every input file must be either processed or reported as skipped
+TOTAL_FIXTURES=$(ls "$FIXTURES"/*region*.gbk 2>/dev/null | wc -l)
+COUNTS_LINE=$(echo "$RUN_OUTPUT" | grep -oE "Processed [0-9]+ region\(s\), skipped [0-9]+" || true)
+if [[ -n "$COUNTS_LINE" ]]; then
+    N_PROC=$(echo "$COUNTS_LINE" | grep -oE "Processed [0-9]+" | grep -oE "[0-9]+")
+    N_SKIP=$(echo "$COUNTS_LINE" | grep -oE "skipped [0-9]+" | grep -oE "[0-9]+")
+    N_ACCOUNTED=$((N_PROC + N_SKIP))
+    if [[ "$N_ACCOUNTED" -eq "$TOTAL_FIXTURES" ]]; then
+        echo "PASS: all $TOTAL_FIXTURES input files accounted for (processed+skipped=$N_ACCOUNTED)"
+    else
+        echo "FAIL: $TOTAL_FIXTURES input files on disk, but only $N_ACCOUNTED accounted for (processed=$N_PROC, skipped=$N_SKIP)."
+        echo "      -> at least one file was silently dropped without being processed or reported as skipped."
+        FAIL=1
+    fi
+else
+    echo "FAIL: could not find a 'Processed N region(s), skipped N.' line in script output"
+    FAIL=1
+fi
+
+# Test 6: a single antiSMASH .zip, relative -i/-o paths
+mkdir -p "$WORKDIR/zipcase/in" "$WORKDIR/zipcase/output"
+cp "$FIXTURES"/*.zip "$WORKDIR/zipcase/in/"
+ZIP_OUTPUT=$(cd "$WORKDIR/zipcase" && "$BGCPRI" -i in -o output 2>&1)
+ZIP_EXIT=$?
+ZIP_TSV="$WORKDIR/zipcase/output/BGC_PRIORIZATION_RESULTS/BGC_summary.tsv"
+if [[ $ZIP_EXIT -eq 0 ]] && ! echo "$ZIP_OUTPUT" | grep -q "No such file" \
+   && echo "$ZIP_OUTPUT" | grep -q "Processed 3 region(s), skipped 5" \
+   && [[ -f "$ZIP_TSV" ]] && diff -q "$EXPECTED" "$ZIP_TSV" > /dev/null; then
+    echo "PASS: .zip-only input with relative paths gives the expected output"
+else
+    echo "FAIL: .zip-only input with relative paths (exit $ZIP_EXIT)"
+    echo "$ZIP_OUTPUT"
+    FAIL=1
+fi
+
+# Test 7: input with no *region*.gbk files must abort cleanly
+mkdir -p "$WORKDIR/empty/in" "$WORKDIR/empty/out"
+cp "$FIXTURES/nrps_valid_region001.gbk" "$WORKDIR/empty/in/whole_genome.gbk"
+EMPTY_OUTPUT=$("$BGCPRI" -i "$WORKDIR/empty/in" -o "$WORKDIR/empty/out" 2>&1)
+EMPTY_EXIT=$?
+if [[ $EMPTY_EXIT -ne 0 ]] && ! echo "$EMPTY_OUTPUT" | grep -q "No such file" \
+   && [[ ! -e "$WORKDIR/empty/out/BGC_PRIORIZATION_RESULTS/dir_temp" ]] \
+   && [[ ! -e "$WORKDIR/empty/out/BGC_PRIORIZATION_RESULTS/BGC_summary.tsv" ]]; then
+    echo "PASS: no region files -> clean abort"
+else
+    echo "FAIL: no region files not handled cleanly (exit $EMPTY_EXIT)"
+    echo "$EMPTY_OUTPUT"
+    FAIL=1
+fi
+
+rm -rf "$WORKDIR"
+
+echo
+if [[ $FAIL -eq 0 ]]; then
+    echo "ALL TESTS PASSED"
+    exit 0
+else
+    echo "TESTS FAILED"
+    exit 1
+fi

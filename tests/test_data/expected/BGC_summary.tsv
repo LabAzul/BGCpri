@@ -1,0 +1,4 @@
+Organism	Cluster	BGC_Class	BGC_Type	Biosynthetic	Biosynthetic-additional	Regulatory	Transport	Other	Complete	Incomplete	Canonical	Other domain	Exceptional	Tailoring	Score	Normalized_Score
+ Test organism	decoy_incomplete_region007	NRPS	NRPS	1	1	0	0	0	1	1	2	0	0	1	9.50	.95
+ Test organism	nrps_valid_region001	NRPS	NRPS	1	1	0	0	0	1	1	2	0	0	1	9.50	.95
+ Test organism	pks_valid_region002	PKS	T1PKS	1	1	0	1	0	1	1	2	1	0	1	12.50	2.08
