@@ -2,9 +2,11 @@
 # BGCpri is licensed under the GNU General Public License v3.0.
 # Developed by João Pedro Brandão Domingues, Lígia Akemi Mizuyama, Alessandra S. Eustáquio and Doctor Laura Pavan Ióca.
 
+export LC_ALL=C
+
 # Function to display the version
 print_version() {
-    echo "BGCpri version 2.1"
+    echo "BGCpri version 2.2"
 }
 
 # Function to display help
@@ -82,6 +84,9 @@ if [ -z "$output_dir" ]; then
     exit 1
 fi
 
+input_dir=$(cd "$input_dir" && pwd)
+output_dir=$(cd "$output_dir" && pwd)
+
 # Main banner
 cat << "EOF"
 LLLL                      BBBB
@@ -110,13 +115,17 @@ echo "BGC PRIORITIZATION ALGORITHM
 The BGC PRIORITIZATION ALGORITHM uses all .zip or .gbk files from antiSMASH results inside the same directory.
 If your files are scattered across multiple directories or if you want to run only specific files, please make sure to make a copy of them in a specific directory before you run this program, in order to get the correct results."
 
-# Function to check and install unzip if needed
-install_unzip() {
-    command -v unzip &> /dev/null || {
-        echo "Error: Unzip is not installed. Aborting."
-        exit 1
-    }
-    echo "Unzip is already installed. Proceeding..."
+# Check that required external tools are available
+check_dependencies() {
+    local missing=0
+    for tool in unzip bc awk grep; do
+        if ! command -v "$tool" &> /dev/null; then
+            echo "Error: required dependency '$tool' is not installed."
+            missing=1
+        fi
+    done
+    [[ "$missing" -eq 0 ]] || { echo "Aborting."; exit 1; }
+    echo "All dependencies found. Proceeding..."
 }
 
 # Canonical, Other, Exceptional, and Tailoring Enzymes list
@@ -148,23 +157,83 @@ unzip_to_directory() {
     echo ".gbk files are in: $temp_dir"
 }
 
+# Count /complete and /incomplete within an aSModule feature block
+count_module_completeness() {
+    local gbk_file="$1"
+    awk '
+        /^     [A-Za-z]/ { feat = $1; next }
+        feat == "aSModule" {
+            line = $0
+            gsub(/^[ \t]+|[ \t]+$/, "", line)
+            if (line == "/complete") complete++
+            if (line == "/incomplete") incomplete++
+        }
+        END { print complete+0, incomplete+0 }
+    ' "$gbk_file"
+}
+
+# Collect /product values from protocluster features only
+get_protocluster_products() {
+    awk '
+        /^ORIGIN/ { exit }
+        /^     [A-Za-z]/ { feat = $1; next }
+        feat == "protocluster" && /^ +\/product="/ {
+            v = $0; sub(/^ +\/product="/, "", v); sub(/".*$/, "", v); print v
+        }
+    ' "$1" | sort -u | paste -sd, -
+}
+
 process_gbk_files() {
     local temp_dir="$1"
     local output_file="$2"
+    local n_processed=0
+    local n_skip_locus=0
+    local n_skip_signature=0
+    local n_skip_length=0
+    local n_skip_class=0
 
     echo -e "Organism\tCluster\tBGC_Class\tBGC_Type\tBiosynthetic\tBiosynthetic-additional\tRegulatory\tTransport\tOther\tComplete\tIncomplete\tCanonical\tOther domain\tExceptional\tTailoring\tScore\tNormalized_Score" > "$output_file"
 
 	
-    for gbk_file in "$temp_dir"/*region*.gbk; do
+    shopt -s nullglob
+    local region_files=("$temp_dir"/*region*.gbk)
+    shopt -u nullglob
+    if [[ ${#region_files[@]} -eq 0 ]]; then
+        echo "Error: no antiSMASH region files (*region*.gbk) were found in the input. Aborting."
+        rm -f "$output_file"
+        exit 1
+    fi
+
+    for gbk_file in "${region_files[@]}"; do
+        # Check: does it have a LOCUS line at all?
+        if ! grep -q "^LOCUS" "$gbk_file"; then
+            echo "Warning: '$gbk_file' has no LOCUS line and is not a valid GenBank file. Skipping."
+            ((n_skip_locus++))
+            continue
+        fi
+
+        # Check: does it carry an antiSMASH signature?
+        if ! grep -q "##antiSMASH-Data-START##" "$gbk_file"; then
+            echo "Warning: '$gbk_file' has a LOCUS line but no antiSMASH signature was found. Skipping."
+            ((n_skip_signature++))
+            continue
+        fi
+
         organism_name=$(grep -m1 "ORGANISM" "$gbk_file"  | awk '{$1=""; print $0}')
         cluster_name=$(basename "$gbk_file" .gbk)
         
-        cluster_length=$(grep "^LOCUS" "$gbk_file" | awk '{print $3}')
+        # Length is the integer immediately preceding "bp" on the first LOCUS line
+        cluster_length=$(awk '/^LOCUS/ { for (i = 2; i < NF; i++) if ($(i+1) == "bp") { print $i; exit } exit }' "$gbk_file")
+        if ! [[ "$cluster_length" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Warning: could not determine cluster length for '$gbk_file'. Skipping."
+            ((n_skip_length++))
+            continue
+        fi
         kb_length=$(echo "scale=2;$cluster_length/1000" | bc)
         
-        bgc_type=$(grep -A 5 "/neighbourhood=" "$gbk_file" | grep "product" | awk -F '"' '{print $2}' | sort -u | tr '\n' ',' | sed 's/,$//')
+        bgc_type=$(get_protocluster_products "$gbk_file")
 
-        # NRPS, PKS, NRPKS-PKS classification
+        # NRPS, PKS, NRPS-PKS classification
         bgc_class=""
         if [[ $bgc_type == *"NRPS"* ]] && [[ $bgc_type == *"KS"* ]]; then
             bgc_class="NRPS-PKS"
@@ -175,12 +244,13 @@ process_gbk_files() {
         fi
         
         if [[ -z "$bgc_class" ]]; then
+            echo "Warning: '$gbk_file' predicted product(s) '${bgc_type:-none detected}' are not NRPS, PKS, or NRPS-PKS. Skipping."
+            ((n_skip_class++))
             continue
         fi
 
         # Variables to count each aspect of the BGC
-        complete_count=$(grep -o "/complete" "$gbk_file" | wc -l)
-        incomplete_count=$(grep -o "/incomplete" "$gbk_file" | wc -l)
+        read -r complete_count incomplete_count <<< "$(count_module_completeness "$gbk_file")"
         biosynthetic=0
         biosynthetic_additional=0
         regulatory=0
@@ -222,14 +292,22 @@ process_gbk_files() {
         normalized_score=$(echo "scale=2;$score/$kb_length" | bc)
 
         echo -e "$organism_name\t$cluster_name\t$bgc_class\t$bgc_type\t$biosynthetic\t$biosynthetic_additional\t$regulatory\t$transport\t$other\t$complete_count\t$incomplete_count\t$canonical\t$other_domain\t$exceptional\t$tailoring\t$score\t$normalized_score" >> "$output_file"
-        
+        ((n_processed++))
     done
 
+    local n_skipped=$((n_skip_locus + n_skip_signature + n_skip_length + n_skip_class))
+
+    if [[ "$n_processed" -eq 0 ]]; then
+        echo "Error: no valid antiSMASH region files were processed ($n_skipped skipped). Aborting."
+        rm -f "$output_file"
+        exit 1
+    fi
+
+    echo "Processed $n_processed region(s), skipped $n_skipped."
     echo "Results are saved in: $output_file"
 }
 
-# Check and install unzip
-install_unzip
+check_dependencies
 
 results_dir="$output_dir/BGC_PRIORIZATION_RESULTS"
 temp_dir="$results_dir/dir_temp"
@@ -237,6 +315,7 @@ output_file="$results_dir/BGC_summary.tsv"
 
 mkdir -p "$results_dir"
 mkdir -p "$temp_dir"
+trap 'rm -rf "$temp_dir"' EXIT
 
 unzip_to_directory "$input_dir" "$temp_dir"
 
@@ -249,13 +328,10 @@ if ls *.gbk 1> /dev/null 2>&1; then
 
     process_gbk_files "$temp_dir" "$output_file"
 
-    # Remove temp dir
-    cd ..
-    rm -r "$temp_dir"
+    cd "$results_dir"
 else
     # If no .gbk files are found, display an error message and abort
-    cd ..
-    rm -r "$temp_dir" "$results_dir"
+    cd "$results_dir"
     echo "Error: No .gbk files were found. Aborting."
     exit 1
 fi
