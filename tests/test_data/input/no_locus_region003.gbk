@@ -1,0 +1,10 @@
+DEFINITION  Corrupted record with no LOCUS line.
+COMMENT     ##antiSMASH-Data-START##
+            Version      :: 7.1.0
+            ##antiSMASH-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..5000
+                     /organism="Test organism"
+ORIGIN
+        1 atgtctacgt acgtacgtac gtacgtacgt
+//

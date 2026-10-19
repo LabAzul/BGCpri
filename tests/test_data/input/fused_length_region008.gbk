@@ -1,0 +1,50 @@
+LOCUS       ctg9_region001.1_withaverylongnamethatfuses10000 bp    DNA     linear   BCT 01-JAN-2024
+DEFINITION  Test organism region 1.
+ACCESSION   ctg1_region001
+VERSION     ctg1_region001.1
+KEYWORDS    .
+SOURCE      Test organism
+  ORGANISM  Test organism
+COMMENT     ##antiSMASH-Data-START##
+            Version      :: 7.1.0
+            Run date     :: 2024-01-01T00:00:00
+            NOTE: This is a single cluster extracted from a larger record!
+            ##antiSMASH-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..10000
+                     /organism="Test organism"
+     protocluster    1..10000
+                     /aStool="rule-based-clusters"
+                     /category="NRPS"
+                     /neighbourhood="10000"
+                     /product="NRPS"
+     gene            1..1500
+                     /gene="geneA"
+     CDS             1..1500
+                     /gene="geneA"
+                     /gene_kind="biosynthetic"
+                     /gene_functions="biosynthetic (rule-based-clusters) NRPS: NRPS"
+     aSDomain        100..400
+                     /aSTool="nrps_pks_domains"
+                     /description="Condensation domain"
+                     /domain_id="nrpspksdomains_ctg1_1_Condensation.1"
+     aSDomain        500..800
+                     /aSTool="nrps_pks_domains"
+                     /description="AA-adenyl-dom: amino acid adenylation domain"
+                     /domain_id="nrpspksdomains_ctg1_1_AMP-binding.1"
+     aSModule        100..800
+                     /complete
+                     /domains="nrpspksdomains_ctg1_1_Condensation.1, nrpspksdomains_ctg1_1_AMP-binding.1"
+     gene            2000..3500
+                     /gene="geneB"
+     CDS             2000..3500
+                     /gene="geneB"
+                     /gene_kind="biosynthetic-additional"
+     aSDomain        2100..2400
+                     /aSTool="nrps_pks_domains"
+                     /description="Cytochrome P450"
+     aSModule        2100..2400
+                     /incomplete
+ORIGIN
+        1 atgtctacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac
+//

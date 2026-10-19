@@ -1,0 +1,16 @@
+LOCUS       ctg3_region001.1
+DEFINITION  Test organism region with malformed LOCUS line.
+ACCESSION   ctg3_region001
+VERSION     ctg3_region001.1
+KEYWORDS    .
+SOURCE      Test organism
+  ORGANISM  Test organism
+COMMENT     ##antiSMASH-Data-START##
+            Version      :: 8.1.0
+            ##antiSMASH-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..1
+                     /organism="Test organism"
+ORIGIN
+        1 a
+//

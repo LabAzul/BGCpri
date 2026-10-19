@@ -1,0 +1,17 @@
+LOCUS       plain_record.1          3000 bp    DNA     linear   BCT 01-JAN-2024
+DEFINITION  A plain GenBank record with no biosynthetic gene cluster tool annotation.
+ACCESSION   plain_record
+VERSION     plain_record.1
+KEYWORDS    .
+SOURCE      Some organism
+  ORGANISM  Some organism
+FEATURES             Location/Qualifiers
+     source          1..3000
+                     /organism="Some organism"
+     gene            1..1500
+                     /gene="geneX"
+     CDS             1..1500
+                     /gene="geneX"
+ORIGIN
+        1 atgtctacgt acgtacgtac gtacgtacgt
+//
